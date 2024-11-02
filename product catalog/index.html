@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <style>
+        .card {
+            position: relative; /* Set card to relative positioning */
+            overflow: hidden; /* Hide overflow to keep the image intact */
+            height: auto; /* Auto height for cards */
+        }
+        .card-img-top {
+            width: 100%; /* Make the image fill the width */
+            height: auto; /* Maintain aspect ratio */
+        }
+        .description {
+            display: none; /* Hide description by default */
+            position: absolute; /* Position absolutely on the image */
+            top: 50%; /* Center vertically */
+            left: 50%; /* Center horizontally */
+            transform: translate(-50%, -50%); /* Adjust positioning to truly center */
+            background-color: rgba(255, 255, 255, 0.8); /* Background for readability */
+            padding: 10px; /* Padding around the text */
+            border-radius: 5px; /* Rounded corners */
+            text-align: center; /* Center the text */
+        }
+        .card:hover .description {
+            display: block; /* Show description on hover */
+        }
+        .add-to-cart {
+            margin-top: 10px; /* Space above the button */
+            display: block; /* Make button visible */
+        }
+    </style>
+    <script type="module">
+        // Your Firebase configuration
+
+        function toggleFavorite(element, productId) {
+    element.classList.toggle('text-danger'); // Toggles the color to red when favorited
+    console.log("Favorite toggled for product:", productId);
+}
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAbMI-2bjgTwuPjlqlXVsDD-fdLgMgieVU",
+            authDomain: "my-shopping-cart-a48d6.firebaseapp.com",
+            projectId: "my-shopping-cart-a48d6",
+            storageBucket: "my-shopping-cart-a48d6.appspot.com",
+            messagingSenderId: "610136395438",
+            appId: "1:610136395438:web:708ef6a072670f9bbfe73f",
+            measurementId: "G-S9YX25EPT9"
+        };
+
+        // Import Firebase and Firestore
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app); // Initialize Firestore
+
+        // Function to add the product to the cart
+        window.addToCart = async function(productName) {
+            const productData = {
+                name: productName,
+                addedAt: new Date().toISOString() // You can add more details if needed
+            };
+
+            try {
+                const docRef = await addDoc(collection(db, 'cartItems'), productData);
+                alert(productName + ' has been added to your cart! Document written with ID: ' + docRef.id);
+            } catch (error) {
+                console.error('Error adding item to cart:', error);
+            }
+        };
+
+        // Function to fetch and display cart items
+        window.showCartItems = async function() {
+            const cartItemsContainer = document.getElementById('cart-items');
+            cartItemsContainer.innerHTML = ''; // Clear previous items
+
+            try {
+                const querySnapshot = await getDocs(collection(db, 'cartItems'));
+                querySnapshot.forEach((doc) => {
+                    const item = doc.data();
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    itemElement.innerText = `${item.name} (Added at: ${item.addedAt})`;
+
+                    // Create delete button
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'btn btn-danger btn-sm';
+                    deleteButton.innerText = 'Delete';
+                    deleteButton.onclick = async () => {
+                        await deleteCartItem(doc.id);
+                        itemElement.remove(); // Remove the item from the displayed list
+                    };
+
+                    // Append delete button to the item element
+                    itemElement.appendChild(deleteButton);
+                    cartItemsContainer.appendChild(itemElement);
+                });
+            } catch (error) {
+                console.error('Error fetching cart items:', error);
+            }
+
+            // Show modal
+            const cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
+            cartModal.show();
+        };
+
+        // Function to delete a cart item
+        async function deleteCartItem(itemId) {
+            try {
+                await deleteDoc(doc(db, 'cartItems', itemId));
+                alert('Item deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting item:', error);
+            }
+        }
+        window.addToFavorites = async function(button, productName) {
+            button.classList.toggle('active');
+            const productData = { name: productName, addedAt: new Date().toISOString() };
+
+            if (button.classList.contains('active')) {
+                try {
+                    await addDoc(collection(db, 'favorites'), productData);
+                    alert(productName + ' has been added to your favorites!');
+                } catch (error) {
+                    console.error('Error adding item to favorites:', error);
+                }
+            } else {
+                try {
+                    const favItems = await getDocs(collection(db, 'favorites'));
+                    favItems.forEach(async (docSnapshot) => {
+                        if (docSnapshot.data().name === productName) {
+                            await deleteDoc(doc(db, 'favorites', docSnapshot.id));
+                            alert(productName + ' removed from favorites');
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error removing item from favorites:', error);
+                }
+            }
+        };
+
+        window.showFavorites = async function() {
+            const favItemsContainer = document.getElementById('fav-items');
+            favItemsContainer.innerHTML = '';
+
+            try {
+                const querySnapshot = await getDocs(collection(db, 'favorites'));
+                querySnapshot.forEach((doc) => {
+                    const item = doc.data();
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    itemElement.innerText = `${item.name} (Added at: ${item.addedAt})`;
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'btn btn-danger btn-sm';
+                    deleteButton.innerText = 'Delete';
+                    deleteButton.onclick = async () => {
+                        await deleteFavoriteItem(doc.id);
+                        itemElement.remove();
+                    };
+
+                    itemElement.appendChild(deleteButton);
+                    favItemsContainer.appendChild(itemElement);
+                });
+            } catch (error) {
+                console.error('Error fetching favorite items:', error);
+            }
+
+            const favModal = new bootstrap.Modal(document.getElementById('favModal'));
+            favModal.show();
+        };
+
+        async function deleteFavoriteItem(itemId) {
+            try {
+                await deleteDoc(doc(db, 'favorites', itemId));
+                alert('Favorite item deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting favorite item:', error);
+            }
+        }
+    </script>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand">Demo</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+            <div class="navbar-nav">
+                <a class="nav-link active" aria-current="page" href="index.html">Home</a>
+                <a class="nav-link" href="#cards">Catalog</a>
+                <a class="nav-link" href="#" onclick="showCartItems()">Cart</a>
+                <a class="nav-link" href="#" onclick="showFavorites()">Favorites</a>
+
+            </div>
+            
+    </div>
+</nav>
+
+<div class="container-fluid p-0">
+    <img src="img1.jpg" alt="Descriptive Alt Text" class="img-fluid w-100">
+</div>
+<br><br>
+
+<!-- Product Cards Section -->
+<div class="container mt-4" id="cards">
+    <div class="row">
+        <!-- Card 1 -->
+        <div class="col-md-4">
+            <div class="card">
+                <img src="Card1.PNG" class="card-img-top" alt="Product 1">
+                <p class="description">3 Piece Embroidered Lawn Unstitched Suit with Embroidered Denting Lawn Dupatta DN-42018</p>
+                <div class="card-body">
+                    <h5 class="card-title">DN-42018</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-primary add-to-cart" onclick="addToCart('DN-42018')">Add to Cart</button>
+                        <button class="btn btn-outline-danger add-to-fav" onclick="addToFavorites(this, 'DN-42018')">❤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Card 2 -->
+        <div class="col-md-4">
+            <div class="card">
+                <img src="Card2.PNG" class="card-img-top" alt="Product 2">
+                <p class="description">3 Piece Embroidered Lawn Unstitched Suit with Embroidered Denting Lawn Dupatta DN-42013</p>
+                <div class="card-body">
+                    <h5 class="card-title">DN-42013</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-primary add-to-cart" onclick="addToCart('DN-42013')">Add to Cart</button>
+                        <button class="btn btn-outline-danger add-to-fav" onclick="addToFavorites(this, 'DN-42013')">❤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Card 3 -->
+        <div class="col-md-4">
+            <div class="card">
+                <img src="Card3.PNG" class="card-img-top" alt="Product 3">
+                <p class="description">3 Piece Embroidered Lawn Unstitched Suit with Embroidered Denting Lawn Dupatta DN-420133</p>
+                <div class="card-body">
+                    <h5 class="card-title">DN-420133</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-primary add-to-cart" onclick="addToCart('DN-420133')">Add to Cart</button>
+                        <button class="btn btn-outline-danger add-to-fav" onclick="addToFavorites(this, 'DN-420133')">❤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Card 4 -->
+        <div class="col-md-4">
+            <div class="card">
+                <img src="Card4.PNG" class="card-img-top" alt="Product 4">
+                <p class="description">3 Piece Embroidered Lawn Unstitched Suit with Embroidered Denting Lawn Dupatta DN-420164</p>
+                <div class="card-body">
+                    <h5 class="card-title">DN-420164</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-primary add-to-cart" onclick="addToCart('DN-420164')">Add to Cart</button>
+                        <button class="btn btn-outline-danger add-to-fav" onclick="addToFavorites(this, 'DN-420164')">❤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Card 5 -->
+        <div class="col-md-4">
+            <div class="card">
+                <img src="Card5.PNG" class="card-img-top" alt="Product 5">
+                <p class="description">3 Piece Embroidered Lawn Unstitched Suit with Embroidered Denting Lawn Dupatta DN-420165</p>
+                <div class="card-body">
+                    <h5 class="card-title">DN-420165</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-primary add-to-cart" onclick="addToCart('DN-420165')">Add to Cart</button>
+                        <button class="btn btn-outline-danger add-to-fav" onclick="addToFavorites(this, 'DN-420165')">❤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Card 6 -->
+        <div class="col-md-4">
+            <div class="card">
+                <img src="Card6.PNG" class="card-img-top" alt="Product 6">
+                <p class="description">3 Piece Embroidered Lawn Unstitched Suit with Embroidered Denting Lawn Dupatta DN-420166</p>
+                <div class="card-body">
+                    <h5 class="card-title">DN-420166</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-primary add-to-cart" onclick="addToCart('DN-420166')">Add to Cart</button>
+                        <button class="btn btn-outline-danger add-to-fav" onclick="addToFavorites(this, 'DN-420166')">❤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal for Cart Items -->
+<div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cartModalLabel">Your Cart Items</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group" id="cart-items">
+                    <!-- Cart items will be displayed here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="favModal" tabindex="-1" aria-labelledby="favModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="favModalLabel">Your Favorite Items</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group" id="fav-items">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Footer Section -->
+<footer class="bg-light text-center text-lg-start mt-5">
+    <div class="container p-4">
+        <!-- Footer Links -->
+        <div class="row">
+            <!-- Column 1 -->
+            <div class="col-lg-6 col-md-12 mb-4">
+                <h5 class="text-uppercase">About Us</h5>
+                <p>
+                    We offer a wide range of high-quality products for all your needs. Explore our collection and enjoy the best shopping experience.
+                </p>
+            </div>
+
+            <!-- Column 2 -->
+            <div class="col-lg-3 col-md-6 mb-4">
+                <h5 class="text-uppercase">Quick Links</h5>
+                <ul class="list-unstyled mb-0">
+                    <li><a href="index.html" class="text-dark">Home</a></li>
+                    <li><a href="#cards" class="text-dark">Catalog</a></li>
+                    <li><a href="#" onclick="showCartItems()" class="text-dark">Cart</a></li>
+                    <li><a href="login_form.html" class="text-dark">Login</a></li>
+                    <li><a href="signup.html" class="text-dark">Sign Up</a></li>
+                </ul>
+            </div>
+
+            <!-- Column 3 -->
+            <div class="col-lg-3 col-md-6 mb-4">
+                <h5 class="text-uppercase">Contact Us</h5>
+                <p>Email: support@yourwebsite.com</p>
+                <p>Phone: +123 456 7890</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Copyright -->
+    <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.2);">
+        © 2023 Your Company Name
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</body>
+</html>

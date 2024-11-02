@@ -1,0 +1,27 @@
+.card {
+    position: relative; /* Set card to relative positioning */
+    overflow: hidden; /* Hide overflow to keep the image intact */
+    height: auto; /* Auto height for cards */
+}
+.card-img-top {
+    width: 100%; /* Make the image fill the width */
+    height: auto; /* Maintain aspect ratio */
+}
+.description {
+    display: none; /* Hide description by default */
+    position: absolute; /* Position absolutely on the image */
+    top: 50%; /* Center vertically */
+    left: 50%; /* Center horizontally */
+    transform: translate(-50%, -50%); /* Adjust positioning to truly center */
+    background-color: rgba(255, 255, 255, 0.8); /* Background for readability */
+    padding: 10px; /* Padding around the text */
+    border-radius: 5px; /* Rounded corners */
+    text-align: center; /* Center the text */
+}
+.card:hover .description {
+    display: block; /* Show description on hover */
+}
+.add-to-cart {
+    margin-top: 10px; /* Space above the button */
+    display: block; /* Make button visible */
+}
